@@ -1,0 +1,5 @@
+com/kafka/tutorial/KafkaConfig.class
+com/kafka/tutorial/SimpleKafkaProducer$MessageTiming.class
+com/kafka/tutorial/SimpleKafkaConsumer.class
+com/kafka/tutorial/KafkaTutorialApp.class
+com/kafka/tutorial/SimpleKafkaProducer.class
