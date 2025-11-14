@@ -26,10 +26,11 @@ public class KafkaConfig {
     public static final String KEY_DESERIALIZER = "org.apache.kafka.common.serialization.StringDeserializer";
     public static final String VALUE_DESERIALIZER = "org.apache.kafka.common.serialization.StringDeserializer";
     public static final boolean ENABLE_AUTO_COMMIT = true;
-    public static final String AUTO_OFFSET_RESET = "latest"; // Start from latest messages (fixed)
     
-    // Consumer demo parameter (configurable)
-    public static final int DEFAULT_MAX_POLL_RECORDS = 500; // Default max records per poll
+    // Consumer demo parameters (configurable)
+    public static final String DEFAULT_AUTO_OFFSET_RESET = "latest"; // "earliest" or "latest"
+    public static final int DEFAULT_FETCH_MIN_BYTES = 1; // Default: return immediately (1 byte minimum)
+    public static final int DEFAULT_FETCH_MAX_WAIT_MS = 500; // Default: wait up to 500ms
     
     // Number of sample messages to send/receive
     public static final int SAMPLE_MESSAGE_COUNT = 10;

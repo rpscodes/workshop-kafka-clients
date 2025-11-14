@@ -16,23 +16,30 @@ import java.util.Properties;
  * This class shows:
  * - How to configure a Kafka consumer
  * - Important configuration parameters and their effects
- * - How max.poll.records affects batching behavior (how many messages per poll)
+ * - How auto.offset.reset controls where the consumer starts reading from
+ * - How fetch.min.bytes and fetch.max.wait.ms control fetch batching behavior
  */
 public class SimpleKafkaConsumer {
     
     private KafkaConsumer<String, String> consumer;
     private String topic;
-    private int maxPollRecords;
+    private String autoOffsetReset;
+    private int fetchMinBytes;
+    private int fetchMaxWaitMs;
     
     /**
      * Creates a new Kafka Consumer with the specified configuration
      * 
      * @param topic The topic to consume messages from
-     * @param maxPollRecords Maximum number of records returned in a single poll
+     * @param autoOffsetReset Where to start reading from: "earliest" or "latest"
+     * @param fetchMinBytes Minimum bytes to accumulate before returning from fetch
+     * @param fetchMaxWaitMs Maximum time to wait for fetch.min.bytes before returning
      */
-    public SimpleKafkaConsumer(String topic, int maxPollRecords) {
+    public SimpleKafkaConsumer(String topic, String autoOffsetReset, int fetchMinBytes, int fetchMaxWaitMs) {
         this.topic = topic;
-        this.maxPollRecords = maxPollRecords;
+        this.autoOffsetReset = autoOffsetReset;
+        this.fetchMinBytes = fetchMinBytes;
+        this.fetchMaxWaitMs = fetchMaxWaitMs;
         
         // Create consumer properties
         Properties props = new Properties();
@@ -51,27 +58,34 @@ public class SimpleKafkaConsumer {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaConfig.VALUE_DESERIALIZER);
         
         // AUTO.OFFSET.RESET: What to do when there is no initial offset or offset is out of range
-        // "earliest" = start from the beginning of the topic (read all messages)
-        // "latest" = start from the end (only read new messages)
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfig.AUTO_OFFSET_RESET);
+        // "earliest" = start from the beginning of the topic (read all messages from the start)
+        // "latest" = start from the end (only read new messages sent after consumer starts)
+        // DEMO: Try "earliest" to see all messages, or "latest" to only see new ones!
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         
         // ENABLE.AUTO.COMMIT: Automatically commit offsets periodically
         // true = Kafka automatically commits offsets (simpler, but less control)
         // false = You must manually commit offsets (more control, more complex)
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, KafkaConfig.ENABLE_AUTO_COMMIT);
         
-        // MAX.POLL.RECORDS: Maximum number of records returned in a single poll
-        // Smaller values (e.g., 1) = fewer messages per poll, more poll calls needed
-        // Larger values (e.g., 10) = more messages per poll, fewer poll calls needed
-        // DEMO: Try changing this to see batching behavior!
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
+        // FETCH.MIN.BYTES: Minimum amount of data the server should return
+        // The consumer will wait until at least this many bytes are available
+        // Larger values = more batching at the fetch stage, better throughput
+        // Smaller values = less waiting, lower latency
+        // Works with fetch.max.wait.ms - waits for min bytes OR max wait time, whichever comes first
+        props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, fetchMinBytes);
+        
+        // FETCH.MAX.WAIT.MS: Maximum time to wait for fetch.min.bytes
+        // If fetch.min.bytes isn't reached within this time, return whatever is available
+        // Works together with fetch.min.bytes to control batching vs latency
+        // Larger values = more time to accumulate data, better batching
+        // Smaller values = less waiting, lower latency
+        props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, fetchMaxWaitMs);
         
         // Additional useful configurations (commented for reference)
         // props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5000); // Auto-commit interval
         // props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000); // Max time between polls
         // props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000); // Session timeout
-        // props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1); // Minimum bytes to fetch
-        // props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500); // Max wait time for fetch
         
         // Create the consumer instance
         this.consumer = new KafkaConsumer<>(props);
@@ -83,17 +97,28 @@ public class SimpleKafkaConsumer {
         System.out.println("Bootstrap Servers: " + KafkaConfig.BOOTSTRAP_SERVERS);
         System.out.println("Topic: " + topic);
         System.out.println("Group ID: " + KafkaConfig.GROUP_ID);
-        System.out.println("Auto Offset Reset: " + KafkaConfig.AUTO_OFFSET_RESET);
-        System.out.println("Max Poll Records: " + maxPollRecords);
+        System.out.println("Auto Offset Reset: " + autoOffsetReset);
+        System.out.println("Fetch Min Bytes: " + fetchMinBytes);
+        System.out.println("Fetch Max Wait Ms: " + fetchMaxWaitMs);
         System.out.println("Enable Auto Commit: " + KafkaConfig.ENABLE_AUTO_COMMIT);
         System.out.println("================================\n");
         
-        System.out.println("NOTE: With max.poll.records=" + maxPollRecords + ", the consumer will");
-        if (maxPollRecords == 1) {
-            System.out.println("      receive 1 message per poll call (many polls needed).\n");
+        System.out.println("CONFIGURATION EXPLANATION:");
+        System.out.println("  Auto Offset Reset (" + autoOffsetReset + "):");
+        if ("earliest".equals(autoOffsetReset)) {
+            System.out.println("    - Consumer will read from the beginning of the topic");
+            System.out.println("    - You'll see ALL messages that exist in the topic");
         } else {
-            System.out.println("      receive up to " + maxPollRecords + " messages per poll call (fewer polls needed).\n");
+            System.out.println("    - Consumer will only read NEW messages sent after it starts");
+            System.out.println("    - You won't see messages that were sent before the consumer started");
         }
+        System.out.println("  Fetch Batching (fetch.min.bytes + fetch.max.wait.ms):");
+        System.out.println("    - Waits up to " + fetchMaxWaitMs + "ms to accumulate at least " + fetchMinBytes + " bytes");
+        System.out.println("    - Fetches data from broker into consumer's internal buffer");
+        System.out.println("    - Returns when min bytes reached OR max wait time elapsed (whichever comes first)");
+        System.out.println("    - Larger values = more batching, better throughput");
+        System.out.println("    - Smaller values = less waiting, lower latency");
+        System.out.println();
     }
     
     /**
@@ -144,9 +169,10 @@ public class SimpleKafkaConsumer {
                 // Reset empty poll count when we receive messages
                 emptyPollCount = 0;
                 
-                // Show how many messages were returned in this poll (demonstrates max.poll.records)
+                // Show how many messages were returned in this poll
                 int recordsInPoll = records.count();
-                System.out.println(">>> Poll returned " + recordsInPoll + " message(s) (max.poll.records=" + maxPollRecords + ") <<<\n");
+                System.out.println(">>> Poll returned " + recordsInPoll + " message(s) <<<");
+                System.out.println("    (fetch.min.bytes=" + fetchMinBytes + ", fetch.max.wait.ms=" + fetchMaxWaitMs + ")\n");
                 
                 // Process each record
                 for (ConsumerRecord<String, String> record : records) {
@@ -174,17 +200,20 @@ public class SimpleKafkaConsumer {
         } finally {
             System.out.println("\n=== Consumer Summary ===");
             System.out.println("Total messages consumed: " + messageCount);
-            System.out.println("Max Poll Records used: " + maxPollRecords);
-            if (maxPollRecords == 1) {
-                System.out.println("Messages were received one at a time (1 per poll).");
-            } else {
-                System.out.println("Messages were batched (up to " + maxPollRecords + " per poll).");
-            }
+            System.out.println("Configuration used:");
+            System.out.println("  - auto.offset.reset: " + autoOffsetReset);
+            System.out.println("  - fetch.min.bytes: " + fetchMinBytes);
+            System.out.println("  - fetch.max.wait.ms: " + fetchMaxWaitMs);
             if (messageCount == 0) {
                 System.out.println("\nNo messages were consumed. This could mean:");
-                System.out.println("  - The topic is empty");
-                System.out.println("  - No new messages were sent after consumer started");
-                System.out.println("  - Try running the producer first to send some messages");
+                if ("latest".equals(autoOffsetReset)) {
+                    System.out.println("  - auto.offset.reset is set to 'latest' (only reads new messages)");
+                    System.out.println("  - No new messages were sent after consumer started");
+                    System.out.println("  - Try: Run producer first, then consumer, or use 'earliest' to read existing messages");
+                } else {
+                    System.out.println("  - The topic is empty");
+                    System.out.println("  - Try running the producer first to send some messages");
+                }
             }
             System.out.println("=======================\n");
         }

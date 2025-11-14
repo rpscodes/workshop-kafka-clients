@@ -109,17 +109,50 @@ public class KafkaTutorialApp {
     private static void runConsumer() {
         System.out.println("\n=== Consumer Configuration ===");
         
-        // Get max.poll.records configuration
-        System.out.println("\nMax Poll Records Configuration:");
-        System.out.println("  This determines the maximum number of records returned in a single poll.");
-        System.out.println("  - Smaller values (e.g., 1) = fewer messages per poll, more poll calls needed");
-        System.out.println("  - Larger values (e.g., 10) = more messages per poll, fewer poll calls needed");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_MAX_POLL_RECORDS);
-        System.out.println("\n  DEMO: Try 1 to see one message per poll, or 10 to see multiple messages per poll!");
+        // Get auto.offset.reset configuration
+        System.out.println("\nAuto Offset Reset Configuration:");
+        System.out.println("  This determines where the consumer starts reading from the topic.");
+        System.out.println("  - \"earliest\" = read from the beginning (see ALL existing messages)");
+        System.out.println("  - \"latest\" = only read NEW messages sent after consumer starts");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
+        System.out.println("\n  DEMO: Try 'earliest' to see all messages, or 'latest' to only see new ones!");
         
-        int maxPollRecords = getIntInput("Enter max.poll.records (or press Enter for default): ");
-        if (maxPollRecords <= 0) {
-            maxPollRecords = KafkaConfig.DEFAULT_MAX_POLL_RECORDS;
+        String autoOffsetReset = getStringInput("Enter auto.offset.reset (earliest/latest, or press Enter for default): ");
+        if (autoOffsetReset == null || autoOffsetReset.isEmpty()) {
+            autoOffsetReset = KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
+        } else {
+            autoOffsetReset = autoOffsetReset.toLowerCase().trim();
+            if (!"earliest".equals(autoOffsetReset) && !"latest".equals(autoOffsetReset)) {
+                System.out.println("Invalid value. Must be 'earliest' or 'latest'. Using default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
+                autoOffsetReset = KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
+            }
+        }
+        
+        // Get fetch.min.bytes configuration
+        System.out.println("\nFetch Min Bytes Configuration:");
+        System.out.println("  This determines the minimum bytes to accumulate before returning from fetch.");
+        System.out.println("  - Smaller values (e.g., 1) = return immediately, lower latency");
+        System.out.println("  - Larger values (e.g., 1024) = wait to accumulate more data, better batching");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MIN_BYTES);
+        System.out.println("\n  DEMO: Try 1 for immediate return, or 1024 to see batching behavior!");
+        
+        int fetchMinBytes = getIntInput("Enter fetch.min.bytes (or press Enter for default): ");
+        if (fetchMinBytes <= 0) {
+            fetchMinBytes = KafkaConfig.DEFAULT_FETCH_MIN_BYTES;
+        }
+        
+        // Get fetch.max.wait.ms configuration
+        System.out.println("\nFetch Max Wait Ms Configuration:");
+        System.out.println("  This determines the maximum time to wait for fetch.min.bytes.");
+        System.out.println("  - Smaller values (e.g., 100) = less waiting, lower latency");
+        System.out.println("  - Larger values (e.g., 2000) = more time to accumulate data, better batching");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS + " ms");
+        System.out.println("\n  NOTE: Returns when min bytes reached OR max wait time elapsed (whichever comes first)");
+        System.out.println("  DEMO: Try 100 for quick return, or 2000 to see waiting behavior!");
+        
+        int fetchMaxWaitMs = getIntInput("Enter fetch.max.wait.ms (or press Enter for default): ");
+        if (fetchMaxWaitMs <= 0) {
+            fetchMaxWaitMs = KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS;
         }
         
         // Get max messages to consume
@@ -134,7 +167,7 @@ public class KafkaTutorialApp {
         
         SimpleKafkaConsumer consumer = null;
         try {
-            consumer = new SimpleKafkaConsumer(KafkaConfig.DEFAULT_TOPIC, maxPollRecords);
+            consumer = new SimpleKafkaConsumer(KafkaConfig.DEFAULT_TOPIC, autoOffsetReset, fetchMinBytes, fetchMaxWaitMs);
             consumer.consumeMessages(maxMessages);
         } catch (Exception e) {
             System.err.println("Error running consumer: " + e.getMessage());
