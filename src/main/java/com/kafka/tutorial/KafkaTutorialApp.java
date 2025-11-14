@@ -59,30 +59,8 @@ public class KafkaTutorialApp {
     private static void runProducer() {
         System.out.println("\n=== Producer Configuration ===");
         
-        // Get batch size configuration
-        System.out.println("\nBatch Size Configuration:");
-        System.out.println("  Batch size determines how many bytes of messages are grouped together");
-        System.out.println("  before sending to Kafka.");
-        System.out.println("  - Larger values (e.g., 32768) = better throughput, more batching");
-        System.out.println("  - Smaller values (e.g., 1024) = lower latency, less batching");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_BATCH_SIZE + " bytes");
-        
-        int batchSize = getIntInput("Enter batch size in bytes (or press Enter for default): ");
-        if (batchSize <= 0) {
-            batchSize = KafkaConfig.DEFAULT_BATCH_SIZE;
-        }
-        
-        // Get linger.ms configuration
-        System.out.println("\nLinger.ms Configuration:");
-        System.out.println("  Linger.ms is the time to wait before sending a batch.");
-        System.out.println("  - 0 = send immediately (lower latency)");
-        System.out.println("  - >0 (e.g., 100) = wait to accumulate more messages (better throughput)");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_LINGER_MS + " ms");
-        
-        int lingerMs = getIntInput("Enter linger.ms in milliseconds (or press Enter for default): ");
-        if (lingerMs < 0) {
-            lingerMs = KafkaConfig.DEFAULT_LINGER_MS;
-        }
+        int batchSize = getBatchSize();
+        int lingerMs = getLingerMs();
         
         System.out.println("\nStarting Producer...\n");
         
@@ -99,8 +77,30 @@ public class KafkaTutorialApp {
             }
         }
         
-        System.out.println("\nPress Enter to return to main menu...");
-        scanner.nextLine();
+        waitForEnter();
+    }
+    
+    private static int getBatchSize() {
+        System.out.println("\nBatch Size Configuration:");
+        System.out.println("  Batch size determines how many bytes of messages are grouped together");
+        System.out.println("  before sending to Kafka.");
+        System.out.println("  - Larger values (e.g., 32768) = better throughput, more batching");
+        System.out.println("  - Smaller values (e.g., 1024) = lower latency, less batching");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_BATCH_SIZE + " bytes");
+        
+        int batchSize = getIntInput("Enter batch size in bytes (or press Enter for default): ");
+        return batchSize <= 0 ? KafkaConfig.DEFAULT_BATCH_SIZE : batchSize;
+    }
+    
+    private static int getLingerMs() {
+        System.out.println("\nLinger.ms Configuration:");
+        System.out.println("  Linger.ms is the time to wait before sending a batch.");
+        System.out.println("  - 0 = send immediately (lower latency)");
+        System.out.println("  - >0 (e.g., 100) = wait to accumulate more messages (better throughput)");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_LINGER_MS + " ms");
+        
+        int lingerMs = getIntInput("Enter linger.ms in milliseconds (or press Enter for default): ");
+        return lingerMs < 0 ? KafkaConfig.DEFAULT_LINGER_MS : lingerMs;
     }
     
     /**
@@ -109,59 +109,10 @@ public class KafkaTutorialApp {
     private static void runConsumer() {
         System.out.println("\n=== Consumer Configuration ===");
         
-        // Get auto.offset.reset configuration
-        System.out.println("\nAuto Offset Reset Configuration:");
-        System.out.println("  This determines where the consumer starts reading from the topic.");
-        System.out.println("  - \"earliest\" = read from the beginning (see ALL existing messages)");
-        System.out.println("  - \"latest\" = only read NEW messages sent after consumer starts");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
-        System.out.println("\n  DEMO: Try 'earliest' to see all messages, or 'latest' to only see new ones!");
-        
-        String autoOffsetReset = getStringInput("Enter auto.offset.reset (earliest/latest, or press Enter for default): ");
-        if (autoOffsetReset == null || autoOffsetReset.isEmpty()) {
-            autoOffsetReset = KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
-        } else {
-            autoOffsetReset = autoOffsetReset.toLowerCase().trim();
-            if (!"earliest".equals(autoOffsetReset) && !"latest".equals(autoOffsetReset)) {
-                System.out.println("Invalid value. Must be 'earliest' or 'latest'. Using default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
-                autoOffsetReset = KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
-            }
-        }
-        
-        // Get fetch.min.bytes configuration
-        System.out.println("\nFetch Min Bytes Configuration:");
-        System.out.println("  This determines the minimum bytes to accumulate before returning from fetch.");
-        System.out.println("  - Smaller values (e.g., 1) = return immediately, lower latency");
-        System.out.println("  - Larger values (e.g., 1024) = wait to accumulate more data, better batching");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MIN_BYTES);
-        System.out.println("\n  DEMO: Try 1 for immediate return, or 1024 to see batching behavior!");
-        
-        int fetchMinBytes = getIntInput("Enter fetch.min.bytes (or press Enter for default): ");
-        if (fetchMinBytes <= 0) {
-            fetchMinBytes = KafkaConfig.DEFAULT_FETCH_MIN_BYTES;
-        }
-        
-        // Get fetch.max.wait.ms configuration
-        System.out.println("\nFetch Max Wait Ms Configuration:");
-        System.out.println("  This determines the maximum time to wait for fetch.min.bytes.");
-        System.out.println("  - Smaller values (e.g., 100) = less waiting, lower latency");
-        System.out.println("  - Larger values (e.g., 2000) = more time to accumulate data, better batching");
-        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS + " ms");
-        System.out.println("\n  NOTE: Returns when min bytes reached OR max wait time elapsed (whichever comes first)");
-        System.out.println("  DEMO: Try 100 for quick return, or 2000 to see waiting behavior!");
-        
-        int fetchMaxWaitMs = getIntInput("Enter fetch.max.wait.ms (or press Enter for default): ");
-        if (fetchMaxWaitMs <= 0) {
-            fetchMaxWaitMs = KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS;
-        }
-        
-        // Get max messages to consume
-        System.out.println("\nHow many messages to consume?");
-        System.out.println("  Enter 0 for unlimited (will keep consuming until you stop it)");
-        int maxMessages = getIntInput("Enter number of messages (or press Enter for 0): ");
-        if (maxMessages < 0) {
-            maxMessages = 0;
-        }
+        String autoOffsetReset = getAutoOffsetReset();
+        int fetchMinBytes = getFetchMinBytes();
+        int fetchMaxWaitMs = getFetchMaxWaitMs();
+        int maxMessages = getMaxMessages();
         
         System.out.println("\nStarting Consumer...\n");
         
@@ -178,6 +129,64 @@ public class KafkaTutorialApp {
             }
         }
         
+        waitForEnter();
+    }
+    
+    private static String getAutoOffsetReset() {
+        System.out.println("\nAuto Offset Reset Configuration:");
+        System.out.println("  This determines where the consumer starts reading from the topic.");
+        System.out.println("  - \"earliest\" = read from the beginning (see ALL existing messages)");
+        System.out.println("  - \"latest\" = only read NEW messages sent after consumer starts");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
+        System.out.println("\n  DEMO: Try 'earliest' to see all messages, or 'latest' to only see new ones!");
+        
+        String input = getStringInput("Enter auto.offset.reset (earliest/latest, or press Enter for default): ");
+        if (input == null || input.isEmpty()) {
+            return KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
+        }
+        
+        String normalized = input.toLowerCase().trim();
+        if ("earliest".equals(normalized) || "latest".equals(normalized)) {
+            return normalized;
+        }
+        
+        System.out.println("Invalid value. Must be 'earliest' or 'latest'. Using default: " + KafkaConfig.DEFAULT_AUTO_OFFSET_RESET);
+        return KafkaConfig.DEFAULT_AUTO_OFFSET_RESET;
+    }
+    
+    private static int getFetchMinBytes() {
+        System.out.println("\nFetch Min Bytes Configuration:");
+        System.out.println("  This determines the minimum bytes to accumulate before returning from fetch.");
+        System.out.println("  - Smaller values (e.g., 1) = return immediately, lower latency");
+        System.out.println("  - Larger values (e.g., 1024) = wait to accumulate more data, better batching");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MIN_BYTES);
+        System.out.println("\n  DEMO: Try 1 for immediate return, or 1024 to see batching behavior!");
+        
+        int fetchMinBytes = getIntInput("Enter fetch.min.bytes (or press Enter for default): ");
+        return fetchMinBytes <= 0 ? KafkaConfig.DEFAULT_FETCH_MIN_BYTES : fetchMinBytes;
+    }
+    
+    private static int getFetchMaxWaitMs() {
+        System.out.println("\nFetch Max Wait Ms Configuration:");
+        System.out.println("  This determines the maximum time to wait for fetch.min.bytes.");
+        System.out.println("  - Smaller values (e.g., 100) = less waiting, lower latency");
+        System.out.println("  - Larger values (e.g., 2000) = more time to accumulate data, better batching");
+        System.out.println("  Default: " + KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS + " ms");
+        System.out.println("\n  NOTE: Returns when min bytes reached OR max wait time elapsed (whichever comes first)");
+        System.out.println("  DEMO: Try 100 for quick return, or 2000 to see waiting behavior!");
+        
+        int fetchMaxWaitMs = getIntInput("Enter fetch.max.wait.ms (or press Enter for default): ");
+        return fetchMaxWaitMs <= 0 ? KafkaConfig.DEFAULT_FETCH_MAX_WAIT_MS : fetchMaxWaitMs;
+    }
+    
+    private static int getMaxMessages() {
+        System.out.println("\nHow many messages to consume?");
+        System.out.println("  Enter 0 for unlimited (will keep consuming until you stop it)");
+        int maxMessages = getIntInput("Enter number of messages (or press Enter for 0): ");
+        return maxMessages < 0 ? 0 : maxMessages;
+    }
+    
+    private static void waitForEnter() {
         System.out.println("\nPress Enter to return to main menu...");
         scanner.nextLine();
     }
